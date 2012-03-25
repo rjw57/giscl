@@ -18,4 +18,5 @@ link_directories(${Boost_LIBRARY_DIR})
 pkg_check_modules(EIGEN eigen3 REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 
+add_subdirectory(tools)
 add_subdirectory(src)
