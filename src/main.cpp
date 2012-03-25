@@ -48,11 +48,21 @@ public:
 
     size_t height() const { return data_->getImageInfo<CL_IMAGE_HEIGHT>(); }
 
+    boost::tuple<float, float> pixel_linear_scale() const;
+
 protected:
     image_2d_ptr data_;
     OGRSpatialReference spatial_reference_;
     Eigen::Matrix3f geo_transform_;
 };
+
+boost::tuple<float, float> raster::pixel_linear_scale() const
+{
+    float linear_units = spatial_reference_.GetLinearUnits();
+    float pixel_width = geo_transform_(0,0) * linear_units;
+    float pixel_height = geo_transform_(1,1) * linear_units;
+    return boost::make_tuple(pixel_width, pixel_height);
+}
 
 typedef boost::shared_ptr<raster> raster_ptr;
 
@@ -236,7 +246,7 @@ int main(int argc, char** argv)
             std::cerr << "build log for " << device.getInfo<CL_DEVICE_NAME>() << ":\n";
             std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << '\n';
         }
-        return EXIT_FAILURE;
+        error(EXIT_FAILURE, 0, "build failed");
     }
     std::cout << " done" << std::endl;
 
@@ -244,19 +254,21 @@ int main(int argc, char** argv)
     raster_ptr raster(open_raster(argv[1], *context, *command_queue));
     std::cout << " done" << std::endl;
 
-    boost::shared_ptr<cl::Image2D> aspect_image(new cl::Image2D(
+    boost::shared_ptr<cl::Image2D> hill_shade_image(new cl::Image2D(
             *context,
             CL_MEM_READ_WRITE,
             cl::ImageFormat(CL_INTENSITY, CL_FLOAT),
             raster->width(), raster->height()));
 
-    cl::Kernel aspect_kernel(program, "image_aspect");
-    aspect_kernel.setArg(0, *(raster->data()));
-    aspect_kernel.setArg(1, *(aspect_image));
+    cl::Kernel hill_shade_kernel(program, "image_hill_shade");
+    hill_shade_kernel.setArg(0, *(raster->data()));
+    hill_shade_kernel.setArg(1, *(hill_shade_image));
+    boost::tuple<float, float> pixel_linear_scale(raster->pixel_linear_scale());
+    hill_shade_kernel.setArg(2, pixel_linear_scale);
 
-    std::cout << "calculating aspect..." << std::flush;
+    std::cout << "calculating hill_shade..." << std::flush;
     command_queue->enqueueNDRangeKernel(
-        aspect_kernel,
+        hill_shade_kernel,
         cl::NDRange(0,0),
         cl::NDRange(raster->width(), raster->height()),
         cl::NullRange);
@@ -265,7 +277,7 @@ int main(int argc, char** argv)
 
     std::cout << "writing output..." << std::flush;
     write_raster(
-        *similar_raster(aspect_image, *raster),
+        *similar_raster(hill_shade_image, *raster),
         "output.tiff",
         *command_queue);
     command_queue->finish();
