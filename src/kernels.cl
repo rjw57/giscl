@@ -19,7 +19,7 @@ inline float4 lanczos_sample(
         CLK_ADDRESS_CLAMP_TO_EDGE |
         CLK_FILTER_NEAREST;
 
-    int2 centre = (int2)(round(coord));
+    float2 centre = round(coord);
     int a = 2;
     float norm = 0.f;
     float4 sample = (float4)(0.f, 0.f, 0.f, 0.f);
@@ -28,7 +28,7 @@ inline float4 lanczos_sample(
     {
         for(int dy=-a; dy<=a; ++dy)
         {
-            int2 pixel_coord = centre + (int2)(dx, dy);
+            float2 pixel_coord = centre + (float2)(dx, dy);
             float2 delta = coord - pixel_coord;
 
             float k = lanczos(delta, a);
