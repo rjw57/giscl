@@ -1,5 +1,46 @@
 // vim:filetype=c
 
+inline float lanczos(float2 x, float a)
+{
+    float len = length(x);
+    if((len < 1e-2f) && (len > -1e-2f))
+        return 1.f;
+
+    float2 k = (a * sinpi(x) * sinpi(x/a)) / (3.14159f * 3.14159f * x * x);
+    return k.x * k.y;
+}
+
+inline float4 lanczos_sample(
+    __read_only image2d_t input,
+    float2 coord)
+{
+    sampler_t nn_sampler =
+        CLK_NORMALIZED_COORDS_FALSE |
+        CLK_ADDRESS_CLAMP_TO_EDGE |
+        CLK_FILTER_NEAREST;
+
+    int2 centre = (int2)(round(coord));
+    int a = 2;
+    float norm = 0.f;
+    float4 sample = (float4)(0.f, 0.f, 0.f, 0.f);
+
+    for(int dx=-a; dx<=a; ++dx)
+    {
+        for(int dy=-a; dy<=a; ++dy)
+        {
+            int2 pixel_coord = centre + (int2)(dx, dy);
+            float2 delta = coord - pixel_coord;
+
+            float k = lanczos(delta, a);
+
+            norm += k;
+            sample += k * read_imagef(input, nn_sampler, pixel_coord);
+        }
+    }
+
+    return sample / norm;
+}
+
 void gradient(__read_only image2d_t input,
               int2 coord,
               float4* dx, float4* dy,
