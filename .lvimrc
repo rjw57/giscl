@@ -1,0 +1,38 @@
+" Local vimrc called when any file under this dir is openend
+
+" Indentation rules
+set ts=8
+set et
+set sw=4
+set tw=120
+set cino=(0,W4,g0,+0
+set sts=4
+
+" Switch on highlighting for spelling mistakes (in C/C++ mode, VIM is clever
+" enough to only do this for comments).
+if has("spell")
+    autocmd Filetype c,cpp,cs,java,objc set spell
+    autocmd Filetype c,cpp,cs,java,objc set spelllang=en_gb
+endif
+
+" Set the filetype of C++ files to use doxygen
+autocmd Filetype cpp set filetype=cpp.doxygen
+autocmd Filetype hpp set filetype=hpp.doxygen
+
+" Set doxygen comment style for auto-indent
+autocmd Filetype cpp.doxygen,hpp.doxygen set comments=sO:*\ -,mO:*\ \ ,exO:*/,s1:/*,mb:*,ex:*/,bO:///,O://
+
+" Highlight past column width if supported
+if has("colorcolumn")
+    set colorcolumn=120
+endif
+
+" Trailing whitespace will be highlighted in red
+:highlight ExtraWhitespace ctermbg=red guibg=red
+
+" Show trailing whitepace, spaces before a tab, and tabs that are not at the
+" start of a line
+:match ExtraWhitespace /\s\+$\| \+\ze\t\|[^\t]\zs\t\+/
+
+" Set the make program to change into the build directory
+set makeprg=make\ -C\ build
