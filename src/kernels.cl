@@ -41,6 +41,51 @@ inline float4 lanczos_sample(
     return sample / norm;
 }
 
+#if 0
+float line_cost(__read_only image2d_t input,
+                float2 start, float2 end,
+                float2 pixel_linear_scale)
+{
+    float2 delta = end - start;
+
+    float2 dir = normalize(delta);
+    float len = length(delta);
+
+    float integ = 0.f;
+    for(float alpha = 0.f; alpha < len; alpha += 1.f)
+    {
+        float beta = max(alpha + 1.f, len);
+
+        float2 a = start + alpha * dir;
+        float2 b = start + beta * dir;
+
+        float4 midpoint_value = lanczos_sample(input, 0.5f * (a + b));
+
+        float2 segment_delta = (b - a) * pixel_linear_scale;
+        float segment_len = length(segment_delta);
+
+        integ += midpoint_value * segment_len;
+    }
+
+    return integ;
+}
+
+void gradient_lanczos(
+    __read_only image2d_t input,
+    int2 coord,
+    float4* dx, float4* dy,
+    float2 pixel_to_linear_scale)
+{
+    float4 l = lanczos_sample(input, coord + (float2)(-1.f, 0.f));
+    float4 r = lanczos_sample(input, coord + (float2)( 1.f, 0.f));
+    *dx = (r - l) * (0.5f / pixel_to_linear_scale.x);
+
+    float4 b = lanczos_sample(input, coord + (float2)(0.f, -1.f));
+    float4 t = lanczos_sample(input, coord + (float2)(0.f,  1.f));
+    *dy = (t - b) * (0.5f / pixel_to_linear_scale.y);
+}
+#endif
+
 void gradient(__read_only image2d_t input,
               int2 coord,
               float4* dx, float4* dy,
