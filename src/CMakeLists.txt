@@ -10,8 +10,9 @@ add_custom_command(
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_executable(test
-	main.cpp
         kernels.cl.h
+	main.cpp
+        raster.cpp
 )
 target_link_libraries(test
 	${OPENCL_LIBRARIES}
