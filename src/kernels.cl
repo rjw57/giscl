@@ -1,5 +1,17 @@
 // vim:filetype=c
 
+struct segment
+{
+    float2 midpoint_pixel;  // *pixel* co-ordinate of segment midpoint
+    float2 extent;          // direction and length in linear units
+};
+
+struct line
+{
+    // these are in pixel co-ordinates
+    float2 start, end;
+};
+
 inline float lanczos(float x, float a)
 {
     if(x > fabs(a))
@@ -79,12 +91,6 @@ void lanczos_gradient(
     *dy = (t - b) * (0.5f / pixel_to_linear_scale.y);
 }
 
-struct segment
-{
-    float2 midpoint_pixel;  // *pixel* co-ordinate of segment midpoint
-    float2 extent;          // direction and length in linear units
-};
-
 float segment_cost(
     __read_only image2d_t gradient_image,
     const struct segment seg)
@@ -130,29 +136,6 @@ float line_cost(
     }
 
     return cost;
-}
-
-struct line
-{
-    // these are in pixel co-ordinates
-    float2 start, end;
-};
-
-__kernel void line_costs(
-    __read_only image2d_t gradient_image,
-    __global struct line* lines,
-    const int n_lines,
-    const float2 pixel_to_linear_scale,
-    __global float* output_costs)
-{
-    const int idx = get_global_id(0);
-    if(idx >= n_lines)
-        return;
-
-    output_costs[idx] = line_cost(
-        gradient_image,
-        lines[idx].start, lines[idx].end,
-        pixel_to_linear_scale);
 }
 
 __kernel void segment_costs(

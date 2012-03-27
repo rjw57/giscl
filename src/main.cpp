@@ -9,6 +9,7 @@
 #include <boost/utility.hpp>
 #include <CL/cl.hpp>
 #include <cmath>
+#include <deque>
 #include <Eigen/Dense>
 #include <error.h>
 #include <gdal_priv.h>
@@ -77,6 +78,25 @@ context_ptr create_opencl_context() throw (std::runtime_error)
         std::cout << "     name: " << platform.getInfo<CL_PLATFORM_NAME>() << '\n';
         std::cout << "   vendor: " << platform.getInfo<CL_PLATFORM_VENDOR>() << '\n';
         std::cout << "  version: " << platform.getInfo<CL_PLATFORM_VERSION>() << '\n';
+
+        std::vector<cl::Device> devices;
+        platform.getDevices(CL_DEVICE_TYPE_DEFAULT, &devices);
+        bool first(true);
+        BOOST_FOREACH(const cl::Device& device, devices)
+        {
+            if(first)
+            {
+                std::cout << "  devices: ";
+            }
+            else
+            {
+                std::cout << "           ";
+                first = false;
+            }
+            std::cout << device.getInfo<CL_DEVICE_NAME>() << ", "
+                      << device.getInfo<CL_DEVICE_VENDOR>() << ", "
+                      << device.getInfo<CL_DEVICE_VERSION>() << '\n';
+        }
     }
 
     std::vector<cl::Device> devices;
@@ -140,9 +160,15 @@ int main(int argc, char** argv)
 
     cl::Kernel segment_costs(program, "segment_costs");
     std::cout << "calculating costs..." << std::flush;
-    float cost = line_cost(
+
+    std::deque<coord_2d> path;
+    path.push_back(stonehenge);
+    path.push_back(avebury);
+
+    float cost = path_cost(
         *gradient,
-        stonehenge, avebury, *context,
+        path.begin(), path.end(),
+        *context,
         segment_costs,
         *command_queue);
     std::cout << " done" << std::endl;
