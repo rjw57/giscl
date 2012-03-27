@@ -13,6 +13,7 @@ namespace giscl
 {
 
 typedef boost::shared_ptr<cl::Image2D> image_2d_ptr;
+typedef boost::tuple<float, float> coord_2d;
 
 class raster : boost::noncopyable
 {
@@ -23,6 +24,7 @@ public:
         : data_(data)
         , spatial_reference_(projection_wkt)
         , geo_transform_(geo_transform)
+        , inv_geo_transform_(geo_transform.inverse())
     { }
 
     image_2d_ptr data() const { return data_; }
@@ -40,10 +42,15 @@ public:
 
     boost::tuple<float, float> pixel_linear_scale() const;
 
+    coord_2d pixel_to_proj(const coord_2d& p) const;
+
+    coord_2d proj_to_pixel(const coord_2d& p) const;
+
 protected:
     image_2d_ptr data_;
     OGRSpatialReference spatial_reference_;
     Eigen::Matrix3f geo_transform_;
+    Eigen::Matrix3f inv_geo_transform_;
 };
 
 typedef boost::shared_ptr<raster> raster_ptr;

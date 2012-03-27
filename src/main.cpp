@@ -122,7 +122,7 @@ int main(int argc, char** argv)
         BOOST_FOREACH(const cl::Device& device, context->getInfo<CL_CONTEXT_DEVICES>())
         {
             std::cerr << "build log for " << device.getInfo<CL_DEVICE_NAME>() << ":\n";
-            std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device) << '\n';
+            std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
         }
         error(EXIT_FAILURE, 0, "build failed");
     }

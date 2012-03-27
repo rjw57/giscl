@@ -27,6 +27,20 @@ boost::tuple<float, float> raster::pixel_linear_scale() const
     return boost::make_tuple(pixel_width, pixel_height);
 }
 
+coord_2d raster::pixel_to_proj(const coord_2d& p) const
+{
+    Eigen::Vector3f pv(p.get<0>(), p.get<1>(), 1.f);
+    Eigen::Vector3f tv(geo_transform_ * pv);
+    return coord_2d(tv[0]/tv[2], tv[1]/tv[2]);
+}
+
+coord_2d raster::proj_to_pixel(const coord_2d& p) const
+{
+    Eigen::Vector3f pv(p.get<0>(), p.get<1>(), 1.f);
+    Eigen::Vector3f tv(inv_geo_transform_ * pv);
+    return coord_2d(tv[0]/tv[2], tv[1]/tv[2]);
+}
+
 raster_ptr similar_raster(image_2d_ptr data, const raster& prototype)
 {
     char* wkt(NULL);
