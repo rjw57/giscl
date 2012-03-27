@@ -40,7 +40,11 @@ public:
 
     size_t bands() const { return data_->getImageInfo<CL_IMAGE_ELEMENT_SIZE>() >> 2; }
 
+    /// @brief The size of one pixel in linear scale units.
     boost::tuple<float, float> pixel_linear_scale() const;
+
+    /// @brief The size of one pixel in projection units.
+    boost::tuple<float, float> pixel_proj() const;
 
     coord_2d pixel_to_proj(const coord_2d& p) const;
 

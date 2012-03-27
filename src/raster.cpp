@@ -27,6 +27,13 @@ boost::tuple<float, float> raster::pixel_linear_scale() const
     return boost::make_tuple(pixel_width, pixel_height);
 }
 
+boost::tuple<float, float> raster::pixel_proj() const
+{
+    float pixel_width = geo_transform_(0,0);
+    float pixel_height = geo_transform_(1,1);
+    return boost::make_tuple(pixel_width, pixel_height);
+}
+
 coord_2d raster::pixel_to_proj(const coord_2d& p) const
 {
     Eigen::Vector3f pv(p.get<0>(), p.get<1>(), 1.f);

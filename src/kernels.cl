@@ -1,13 +1,16 @@
 // vim:filetype=c
 
-inline float lanczos(float2 x, float a)
+inline float lanczos(float x, float a)
 {
-    float len = length(x);
-    if((len < 1e-2f) && (len > -1e-2f))
+    if(x > fabs(a))
+        return 0.f;
+
+    // technically this should be == 0 but this approximates the Lanczos kernel for small x
+    if(fabs(x/a) < 1e-4f)
         return 1.f;
 
-    float2 k = (a * sinpi(x) * sinpi(x/a)) / (3.14159f * 3.14159f * x * x);
-    return k.x * k.y;
+    float k = (a * sinpi(x) * sinpi(x/a)) / (3.14159f * 3.14159f * x * x);
+    return k;
 }
 
 inline float4 lanczos_sample(
@@ -19,7 +22,7 @@ inline float4 lanczos_sample(
         CLK_ADDRESS_CLAMP_TO_EDGE |
         CLK_FILTER_NEAREST;
 
-    float2 centre = round(coord);
+    int2 centre = convert_int2(round(coord));
     int a = 2;
     float norm = 0.f;
     float4 sample = (float4)(0.f, 0.f, 0.f, 0.f);
@@ -28,10 +31,10 @@ inline float4 lanczos_sample(
     {
         for(int dy=-a; dy<=a; ++dy)
         {
-            float2 pixel_coord = centre + (float2)(dx, dy);
-            float2 delta = coord - pixel_coord;
+            int2 pixel_coord = centre + (int2)(dx, dy);
+            float2 delta = coord - convert_float2(pixel_coord);
 
-            float k = lanczos(delta, a);
+            float k = lanczos(delta.x, a) * lanczos(delta.y, a);
 
             norm += k;
             sample += k * read_imagef(input, nn_sampler, pixel_coord);
@@ -83,17 +86,10 @@ struct segment
 };
 
 float segment_cost(
-    __read_only image2d_t elevation_image,
-    __global const struct segment* seg,
-    const float2 pixel_to_linear_scale)
+    __read_only image2d_t gradient_image,
+    __global const struct segment* seg)
 {
-    float4 dx, dy;
-    lanczos_gradient(elevation_image,
-                     seg->midpoint_pixel,
-                     &dx, &dy,
-                     pixel_to_linear_scale);
-
-    float2 midpoint_grad = (float2)(dx.x, dy.y);
+    float2 midpoint_grad = lanczos_sample(gradient_image, seg->midpoint_pixel).xy;
     float2 direction = normalize(seg->extent);
     float midpoint_slope = dot(direction, midpoint_grad);
 
@@ -108,13 +104,12 @@ __kernel void segment_costs(
     __read_only image2d_t gradient_image,
     __global struct segment* segments,
     const int n_segments,
-    const float2 pixel_to_linear_scale,
     __global float* output_costs)
 {
-    int idx = get_global_id(0) * get_local_size(0) + get_local_id(0);
+    const int idx = get_global_id(0);
     if(idx >= n_segments)
         return;
-    output_costs[idx] = segment_cost(gradient_image, segments + idx, pixel_to_linear_scale);
+    output_costs[n_segments - idx - 1] = segment_cost(gradient_image, segments + idx);
 }
 
 __kernel void image_gradient(
@@ -123,8 +118,8 @@ __kernel void image_gradient(
     float2 pixel_to_linear_scale)
 {
     int2 pixel = {
-        get_global_id(0) * get_local_size(0) + get_local_id(0),
-        get_global_id(1) * get_local_size(1) + get_local_id(1),
+        get_global_id(0),
+        get_global_id(1),
     };
 
     if(pixel.x >= get_image_width(input))
@@ -143,8 +138,8 @@ __kernel void image_slope(
     float2 pixel_to_linear_scale)
 {
     int2 pixel = {
-        get_global_id(0) * get_local_size(0) + get_local_id(0),
-        get_global_id(1) * get_local_size(1) + get_local_id(1),
+        get_global_id(0),
+        get_global_id(1),
     };
 
     if(pixel.x >= get_image_width(input))
