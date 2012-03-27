@@ -4,6 +4,8 @@
 #define __CL_ENABLE_EXCEPTIONS
 
 #include <boost/shared_ptr.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/utility.hpp>
 #include <CL/cl.hpp>
 #include <Eigen/Dense>
 #include <ogr_spatialref.h>

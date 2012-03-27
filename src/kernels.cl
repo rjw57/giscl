@@ -87,17 +87,72 @@ struct segment
 
 float segment_cost(
     __read_only image2d_t gradient_image,
-    __global const struct segment* seg)
+    const struct segment seg)
 {
-    float2 midpoint_grad = lanczos_sample(gradient_image, seg->midpoint_pixel).xy;
-    float2 direction = normalize(seg->extent);
+    float2 midpoint_grad = lanczos_sample(gradient_image, seg.midpoint_pixel).xy;
+    float2 direction = normalize(seg.extent);
     float midpoint_slope = dot(direction, midpoint_grad);
 
-    float seg_length = length(seg->extent);
+    float seg_length = length(seg.extent);
     float vertical_disp = midpoint_slope * seg_length;
     float euc_distance = length((float4)(direction * seg_length, vertical_disp, 0.f));
 
     return euc_distance;
+}
+
+float line_cost(
+    __read_only image2d_t gradient_image,
+    const float2 start, // in pixel co-ordinates
+    const float2 end,   // in pixel co-ordinates
+    float2 pixel_linear_scale)
+{
+    float2 delta = end-start;
+
+    float delta_len = length(delta);
+    delta = normalize(delta);
+
+    float cost = 0.f;
+    float2 last_seg_end = start;
+    for(float alpha=0.f; alpha < delta_len; alpha += 1.f)
+    {
+        float2 seg_start = last_seg_end;
+        float2 seg_end = min(alpha + 1.f, delta_len) * delta + start;
+        float2 midpoint = 0.5f * (seg_end - seg_start);
+        float2 extent = (seg_end - seg_start) * pixel_linear_scale;
+
+        struct segment seg = {
+            .midpoint_pixel = midpoint,
+            .extent = extent,
+        };
+        cost += segment_cost(gradient_image, seg);
+
+        last_seg_end = seg_end;
+    }
+
+    return cost;
+}
+
+struct line
+{
+    // these are in pixel co-ordinates
+    float2 start, end;
+};
+
+__kernel void line_costs(
+    __read_only image2d_t gradient_image,
+    __global struct line* lines,
+    const int n_lines,
+    const float2 pixel_to_linear_scale,
+    __global float* output_costs)
+{
+    const int idx = get_global_id(0);
+    if(idx >= n_lines)
+        return;
+
+    output_costs[idx] = line_cost(
+        gradient_image,
+        lines[idx].start, lines[idx].end,
+        pixel_to_linear_scale);
 }
 
 __kernel void segment_costs(
@@ -109,7 +164,7 @@ __kernel void segment_costs(
     const int idx = get_global_id(0);
     if(idx >= n_segments)
         return;
-    output_costs[n_segments - idx - 1] = segment_cost(gradient_image, segments + idx);
+    output_costs[idx] = segment_cost(gradient_image, segments[idx]);
 }
 
 __kernel void image_gradient(
